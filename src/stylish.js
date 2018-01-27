@@ -1,18 +1,12 @@
 /**
  * stylish.js
  * _DESCRIPTION_
- * Created on 2013-11-14 by ok
- * Compatibility
- * - Internet Explorer >= 9
- * - Chrome
- * - Firefox
  *
- *
- * @author     Oliver Kühn
- * @email      ok@0x04.de
- * @website    http://0x04.de
- * @version    0.1.0
- * @license    MIT
+ * @author  Oliver Kühn
+ * @email   ok@0x04.de
+ * @website http://0x04.de
+ * @version 0.1.1
+ * @license MIT
  */
 
 (function()
@@ -44,7 +38,7 @@
    * @const
    * @type {string}
    */
-  Stylish.ENABLED_ATTRIBUTE = 'stylish';
+  Stylish.ATTRIBUTE_NAME = 'stylish';
 
   /**
    * The expression to match
@@ -54,27 +48,21 @@
    * @const
    * @type {RegExp}
    */
-  Stylish.REGEXP_EXPRESSION = /^'?stylish\((.*)\)'?$/;
+  Stylish.REGEXP_EXPRESSION = new RegExp(`^['"]?${Stylish.ATTRIBUTE_NAME}\\((.*)\\)['"]?$`);
 
   /**
-   * Finds escaped quotes `\'`
+   * Find escaped quotes
    * @const
    * @type {RegExp}
    */
-  Stylish.REGEXP_ESCAPED_SINGLE_QUOTE = /\\'/g;
+  Stylish.REGEXP_ESCAPED_QUOTES = /\\['"]/g;
 
   /**
-   * Contains all selector for affected nodes
+   * Selector for affected nodes
    * @type {string}
    * @private
    */
-  Stylish.QUERY_SELECTOR = ([
-    'link[rel="stylesheet"][href][%s]',
-    'style[%s]',
-    'body *[%s]'
-  ])
-    .join(',')
-    .replace(/%s/g, Stylish.ENABLED_ATTRIBUTE);
+  Stylish.QUERY_SELECTOR = `*[${Stylish.ATTRIBUTE_NAME}]`;
 
   /**
    * Stylish prototype
@@ -97,19 +85,39 @@
     //------------------------------------------------------------------------------
 
     /**
+     * Extracts the argument part from a stylish content expression
+     * @private
+     * @param {String} content
+     * @returns {string}
+     */
+    _extractArgument: function (content) {
+      let result = '';
+
+      if (content.length > 0 && Stylish.REGEXP_EXPRESSION.test(content))
+      {
+        result = content
+          .replace(Stylish.REGEXP_EXPRESSION, '$1')
+          .replace(Stylish.REGEXP_ESCAPED_QUOTES, '"')
+          .trim();
+      }
+
+      return result;
+    },
+
+    /**
      * Processes a stylesheet
      * @private
      * @param {CSSStyleSheet|CSSStyleRule} styleObject
      */
     _processStyleObject: function(styleObject)
     {
-      var rules = styleObject.cssRules;
+      let rules = styleObject.cssRules;
 
       if (rules && rules.length > 0)
       {
-        for (var i = rules.length - 1; i > -1; i--)
+        for (let i = 0; i < rules.length; i++)
         {
-          var rule = rules[i];
+          let rule = rules[i];
 
           // Check nested rules in media queries etc.
           this._processStyleObject(rule);
@@ -125,54 +133,36 @@
      */
     _processStyleProvider: function(styleProvider)
     {
-      var content = styleProvider.style.content;
-      var matches, affectedNodes = [];
+      let arg = this._extractArgument(styleProvider.style.content);
+      let affectedNodes = [];
 
-      // Nothing to do, so exit
-      if (content.length == 0 || !Stylish.REGEXP_EXPRESSION.test(content))
-      {
-        return;
-      }
-
-      // Replace single quotes and get matches of expression
-      matches = content
-        .replace(Stylish.REGEXP_ESCAPED_SINGLE_QUOTE, '"')
-        .match(Stylish.REGEXP_EXPRESSION);
-
-      if (matches && matches.length == 2)
+      if (arg.length > 0)
       {
         // Get arguments of the `stylish.js` expression
-        var args;
+        let args;
 
         try
         {
-          args = JSON.parse(matches[1]);
+          args = JSON.parse(arg);
         }
         catch(e)
         {
-          var message = ('[Stylish/_processStyleProvider] '
-            + 'Error while parse expression `%s`\n'
-            + '\tError Message: %s\n'
-            + '\tError Code: %s')
-            .replace('%s', styleProvider.selectorText || styleProvider.localName)
-            .replace('%s', e.message)
-            .replace('%s', e.code);
+          let message = (`[Stylish/_processStyleProvider] `
+            + `Error while parse expression \`${styleProvider.selectorText || styleProvider.localName}\`\n`
+            + `\tError Message: ${e.message}\n`
+            + `\tError Code: ${e.code}`);
 
-          //throw new Error(message);
-          console.error(message);
+          throw new Error(message);
         }
 
         if (styleProvider instanceof CSSStyleRule)
         {
           // Get all affected nodes by the rule selector
-          var tmp = document.querySelectorAll(styleProvider.selectorText);
-
-          for (var i = tmp.length - 1; i > -1; i--)
-          {
-            affectedNodes.unshift(tmp[i]);
-          }
+          document
+            .querySelectorAll(styleProvider.selectorText)
+            .forEach(node => affectedNodes.push(node));
         }
-        // `stylish.js` is directly applied on a element style
+        // stylish is directly applied on a element style
         else affectedNodes.push(styleProvider);
 
         this._processTrigger(affectedNodes, args, styleProvider);
@@ -190,48 +180,42 @@
      */
     _processTrigger: function(nodes, args, styleProvider, payload, sender)
     {
-      for (var triggerIndex = 0, triggerLength = this._triggers.length; triggerIndex < triggerLength; triggerIndex++)
+      this._triggers.forEach(trigger =>
       {
-        var trigger = this._triggers[triggerIndex];
-        if (trigger === undefined)
-          debugger;
-        if (typeof sender != 'undefined' && sender === trigger)
+        if (sender !== trigger)
         {
-          continue;
-        }
+          try
+          {
+            trigger.call(this, nodes, args, styleProvider, payload);
+          }
+          catch (e) {
+            let message = (`[Stylish/_processTrigger] `
+              + `Error while process trigger for \`${styleProvider.selectorText || styleProvider.localName}\`\n`
+              + `\tError Message: ${e.message}\n`
+              + `\tError Code: ${e.code}`);
 
-        try
-        {
-          trigger.call(this, nodes, args, styleProvider, payload);
+            throw new Error(message);
+          }
         }
-        catch (e)
-        {
-          debugger;
-          var message = ('[Stylish/_processTrigger] '
-            + 'Error while executing expression `%s`\n'
-            + '\tError Message: %s\n'
-            + '\tError Code: %s')
-            .replace('%s', (styleProvider.selectorText || styleProvider.localName))
-            .replace('%s', e.message)
-            .replace('%s', e.code);
-
-          //throw new Error(message);
-          console.error(message);
-        }
-      }
+      });
     },
 
+    /**
+     * Processes a handler
+     * @private
+     * @param nodes
+     * @param payload
+     * @param trigger
+     */
     _processHandler: function(nodes, payload, trigger)
     {
-      for (var index = 0, length = this._handlers.length; index < length; index++)
+      this._handlers.forEach(handler =>
       {
-        var data = this._handlers[index];
-
-        if (data.trigger === trigger)
+        if (trigger === handler.trigger)
         {
-          data.fn(nodes, payload);
+          handler.fn(nodes, payload);
         }
-      }
+      });
     },
 
     /**
@@ -240,27 +224,22 @@
      */
     process: function()
     {
-      var nodes = document.querySelectorAll(Stylish.QUERY_SELECTOR);
+      let nodes = document.querySelectorAll(Stylish.QUERY_SELECTOR);
 
-      for (var i = nodes.length - 1; i > -1; i--)
+      nodes.forEach(node =>
       {
-        var node = nodes[i];
-
-        if (node instanceof HTMLElement)
+        switch (node.localName)
         {
-          switch (node.localName)
-          {
-            case 'link':
-            case 'style':
-              this._processStyleObject(node.sheet);
-              break;
+          case 'link':
+          case 'style':
+            this._processStyleObject(node.sheet);
+            break;
 
-            default:
-              this._processStyleProvider(node);
-              break;
-          }
+          default:
+            this._processStyleProvider(node);
+            break;
         }
-      }
+      });
 
       return this;
     },
@@ -273,6 +252,7 @@
     addTrigger: function(trigger)
     {
       this._triggers.push(trigger);
+
       return this;
     },
 
@@ -283,7 +263,7 @@
      */
     removeTrigger: function(handler)
     {
-      var index = this._triggers.indexOf(handler);
+      let index = this._triggers.indexOf(handler);
 
       if (index > -1)
       {
@@ -301,7 +281,8 @@
      */
     addHandler: function(trigger, fn)
     {
-      this._handlers.push({ trigger: trigger, fn: fn });
+      this._handlers.push({ trigger, fn });
+
       return this;
     },
 
@@ -313,15 +294,16 @@
      */
     removeHandler: function(trigger, fn)
     {
-      for (var index = 0, length = this._handlers.length; index < length; index++)
+      for (let index = 0; index < this._handlers.length; index++)
       {
-        var data = this._handlers[index];
+        let handler = this._handlers[index];
 
-        if (data.trigger === trigger && data.fn === fn)
+        if (handler.trigger === trigger && handler.fn === fn)
         {
-          this._handlers.splice(index--, 1);
+          this._handlers.splice(index, 1);
         }
       }
+
       return this;
     }
   };
@@ -352,21 +334,23 @@
        * @type {Array}
        * @private
        */
-      var _modes = [ 'local', 'global' ];
+      const MODES = [ 'local', 'global' ];
+
       /**
        * @type {Function}
        * @private
        */
-      var _currHandler;
+      let _currHandler;
+
       /**
        * @type {Function}
        * @private
        */
-      var _prevHandler;
+      let _prevHandler;
 
       /**
        * @public
-       * @memberof Stylish.triggers
+       * @memberof Stylish.triggers.on
        * @param {Array} nodes
        * @param {Object} args
        * @param {CSSStyleRule|HTMLElement} styleProvider
@@ -374,55 +358,46 @@
       function triggerOn(nodes, args, styleProvider)
       {
         // Nothing to do!
-        if (nodes.length == 0)
+        if (nodes.length === 0)
         {
           return;
         }
 
-        if (typeof args.on == 'object' && Array.isArray(args.on.events))
+        if (typeof args.on === 'object' && Array.isArray(args.on.events))
         {
           // The mode determines which elements are processed:
           // * local: Only the element that fired the event
           //   is processed
           // * global: All elements that are matches the
           //   expression selector are processed
-          var mode = (_modes.indexOf(args.on.mode) > -1)
+          let mode = (MODES.indexOf(args.on.mode) > -1)
             ? args.on.mode
             : 'local';
 
           // Store previous handler for removing
           _prevHandler = _currHandler;
 
-          _currHandler = function(event)
+          _currHandler = event =>
           {
             this._processHandler(
-              (mode == 'local') ? [ event.target ] : nodes,
-              { event: event },
+              (mode === 'local') ? [ event.target ] : nodes,
+              { event },
               triggerOn
             );
-          }.bind(this);
+          };
 
-          for (var endIndex = args.on.events.length - 1, index = endIndex;
-               index > -1;
-               index--)
+          args.on.events.forEach(event =>
           {
-            var event = args.on.events[endIndex - index];
-
-            for (var nodeEndIndex = nodes.length - 1, nodeIndex = nodeEndIndex;
-                 nodeIndex > -1;
-                 nodeIndex--)
+            nodes.forEach(node =>
             {
-              var node = nodes[nodeEndIndex - nodeIndex];
-
-              // Ensure removement of possible previous handler
-              if (typeof _prevHandler == 'function')
+              if (typeof _prevHandler === 'function')
               {
                 node.removeEventListener(event, _prevHandler);
               }
 
               node.addEventListener(event, _currHandler);
-            }
-          }
+            });
+          });
         }
       }
 
@@ -441,21 +416,23 @@
     {
       function triggerData(nodes, args, styleProvider)
       {
-        if (nodes.length == 0)
+        if (nodes.length === 0)
         {
           return;
         }
 
-        if (typeof args.data == 'object')
+        if (typeof args.data === 'object')
         {
-          for (var n in args.data)
+          for (let n in args.data)
           {
-            for (var index = 0, length = nodes.length; index < length; index++)
+            if (args.data.hasOwnProperty(n))
             {
-              nodes[index].setAttribute('data-' + n, args.data[n]);
-            }
+              nodes.forEach(node => {
+                node.setAttribute(`data-${n}`, args.data[n]);
+              });
 
-            this._processHandler(nodes, { data: args.data }, triggerData);
+              this._processHandler(nodes, { data: args.data }, triggerData);
+            }
           }
         }
       }

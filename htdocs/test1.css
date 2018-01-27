@@ -1,5 +1,5 @@
 body
 {
-    background: silver;
-    content: 'stylish({ "test": 123 })';
+  background: silver;
+  content: 'stylish({ "test": 123 })';
 }

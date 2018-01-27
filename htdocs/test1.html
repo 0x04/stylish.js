@@ -6,7 +6,7 @@
     <link rel="stylesheet"
           type="text/css"
           href="test1.css"
-          sty_lish
+          stylish
     />
     <style type="text/css" stylish>
 
@@ -15,16 +15,14 @@
             content: 'stylish({ "data": { "hello": "world" } })';
         }
 
-        .stylish-button[data-hello="world"]
+        *[data-hello="world"]
         {
             background-color: green;
         }
 
         body
         {
-            background-color: aquamarine;
-            /* ... */
-            content: 'stylish("hello world. sq")';
+            content: 'stylish({ "test": "world" })';
         }
 
         .test[stylish='{"abc":123}']
@@ -36,7 +34,7 @@
          * Test of the "on" Expression handler
          * @see {Stylish.triggers.on}
          */
-        .test-on-expression-global
+        .test-on-expression-global--onclick
         {
             content: 'stylish({ "on": { "events": [ "click" ], "mode": "global" }})'
         }
@@ -45,9 +43,27 @@
          * Test of the "on" Expression handler
          * @see {Stylish.triggers.on}
          */
-        .test-on-expression-local
+        .test-on-expression-local--onclick
         {
             content: 'stylish({ "on": { "events": [ "click" ], "mode": "local" }})'
+        }
+
+        /**
+         * Test of the "on" Expression handler
+         * @see {Stylish.triggers.on}
+         */
+        .test-on-expression-global--onmouseover
+        {
+            content: 'stylish({ "on": { "events": [ "mouseover" ], "mode": "global" }})';
+        }
+
+        /**
+         * Test of the "on" Expression handler
+         * @see {Stylish.triggers.on}
+         */
+        .test-on-expression-local--onmouseover
+        {
+            content: 'stylish({ "on": { "events": [ "mouseover" ], "mode": "local" }})';
         }
 
     </style>
@@ -55,49 +71,30 @@
     <script type="text/javascript" src="../src/stylish.js"></script>
 </head>
 <body>
-
-<div style="content: 'stylish(\'inline element\')'" stylish>inline 1</div>
-<div style="content: 'stylish({ \'data\': { \'test\': \'inline\' } })'" stylish>inline 2</div>
+<div style="content: 'stylish(&quot;inline element&quot;)'" stylish>inline 1</div>
+<div style="content: 'stylish({ &quot;data&quot;: { &quot;hello&quot;: &quot;world&quot; } })'" stylish>inline 2</div>
 
 <button class="stylish-button">test</button>
 <fieldset>
-    <button class="test-on-expression-global">on expression global 1</button>
-    <button class="test-on-expression-global">on expression global 2</button>
+    <legend>`stylish.trigger.on global:onclick`</legend>
+    <button class="test-on-expression-global--onclick">on expression global 1</button>
+    <button class="test-on-expression-global--onclick">on expression global 2</button>
 </fieldset>
 <fieldset>
-    <button class="test-on-expression-local">on expression local 1</button>
-    <button class="test-on-expression-local">on expression local 2</button>
+    <legend>`stylish.trigger.on local:onclick`</legend>
+    <button class="test-on-expression-local--onclick">on expression local 1</button>
+    <button class="test-on-expression-local--onclick">on expression local 2</button>
+</fieldset>
+<fieldset>
+    <legend>`stylish.trigger.on global:onmouseover`</legend>
+    <button class="test-on-expression-global--onmouseover">on expression global 1</button>
+    <button class="test-on-expression-global--onmouseover">on expression global 2</button>
+</fieldset>
+<fieldset>
+    <legend>`stylish.trigger.on local:onmouseover`</legend>
+    <button class="test-on-expression-local--onmouseover">on expression local 1</button>
+    <button class="test-on-expression-local--onmouseover">on expression local 2</button>
 </fieldset>
 <script type="text/javascript" src="test1.js"></script>
-
-<script type="text/javascript">
-
-    console.time('init');
-    var stylish = new Stylish();
-
-    function triggerCustom(nodes, args, styleProvider)
-    {
-        console.log('[triggerCustom]', nodes, args, styleProvider);
-    }
-
-    stylish
-        .addTrigger(Stylish.triggers.on)
-        .addTrigger(Stylish.triggers.data)
-        .addTrigger(triggerCustom)
-        .addHandler(Stylish.triggers.on, function(nodes, payload, trigger)
-        {
-            console.info('[onHandler]', nodes, payload);
-        })
-        .addHandler(Stylish.triggers.data, function(nodes, payload, trigger)
-        {
-            console.info('[dataHandler]', nodes, payload);
-        });
-
-    stylish.process();
-
-    console.timeEnd('init');
-
-</script>
-
 </body>
 </html>
