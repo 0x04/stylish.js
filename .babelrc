@@ -1,0 +1,11 @@
+{
+  "presets": [
+    "stage-2",
+    [
+      "env",
+      {
+        "modules": "umd"
+      }
+    ]
+  ]
+}

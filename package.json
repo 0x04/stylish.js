@@ -1,0 +1,37 @@
+{
+  "name": "stylish.js",
+  "version": "0.1.1",
+  "description": "A CSS-JavaScript processor",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack --mode development"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0x04/stylish.js.git"
+  },
+  "keywords": [
+    "CSS",
+    "JavaScript",
+    "processor"
+  ],
+  "author": {
+    "name": "Oliver Kühn",
+    "email": "ok@0x04.de",
+    "homepage": "http://0x04.de"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/0x04/stylish.js/issues"
+  },
+  "homepage": "https://github.com/0x04/stylish.js#readme",
+  "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.4",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-stage-2": "^6.24.1",
+    "webpack": "^4.1.1",
+    "webpack-cli": "^2.0.10"
+  }
+}

@@ -42,8 +42,7 @@ stylish
     {
       console.info('[dataHandler]', nodes, payload);
     }
-  );
-
-stylish.process();
+  )
+  .process();
 
 console.timeEnd('init');
